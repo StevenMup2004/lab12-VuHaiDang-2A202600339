@@ -121,6 +121,6 @@ Note: In this verification run, all 12 requests returned 200 (no 429 observed).
 - PORT (provided by Railway at runtime)
 
 ## Screenshots
-- [Deployment dashboard](screenshots/dashboard.png)
-- [Service running](screenshots/running.png)
-- [Test results](screenshots/test.png)
+- [Deployment dashboard](screenshots/06-lab-complete/dashboard.png)
+- [Service running](screenshots/06-lab-complete/running.png)
+- [Test results](screenshots/06-lab-complete/test.png)
