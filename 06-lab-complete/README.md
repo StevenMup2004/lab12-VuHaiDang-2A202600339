@@ -29,6 +29,13 @@ This folder now deploys the integrated project runtime using Flask + Gunicorn.
 - `POST /api/chat` full chat API
 - `POST /ask` compatibility API for simple question payload
 
+`POST /ask` now includes:
+- API key auth (`AGENT_API_KEY`)
+- rate limiting (`RATE_LIMIT_PER_MINUTE`, default `10/min`)
+- monthly budget guard (`MONTHLY_BUDGET_USD`, default `$10`)
+- Redis-backed stateless counters when `REDIS_URL` is available
+- graceful shutdown protection (returns `503` while draining)
+
 ## Run Locally
 
 ### Option 1: Docker Compose (recommended)
@@ -69,6 +76,10 @@ python app.py
 - `DEFAULT_PROVIDER`
 - `DEFAULT_MODEL`
 - `LOG_LEVEL`
+- `ENVIRONMENT`
+- `RATE_LIMIT_PER_MINUTE`
+- `MONTHLY_BUDGET_USD`
+- `REDIS_URL`
 
 ### Render
 

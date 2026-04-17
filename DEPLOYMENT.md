@@ -10,7 +10,7 @@ Railway
 - Project: day12-v1
 - Service: day12-v2
 - Environment: production
-- Latest successful deployment ID: 1373ea71-951c-4103-87a1-7d61d4980426
+- Latest successful deployment ID: d08ceaf0-4541-4cd8-bf86-8e7cc54a88c8
 - Status: SUCCESS
 - Verified date: 2026-04-17
 
@@ -30,7 +30,7 @@ curl -i https://day12-v2-production.up.railway.app/ready
 ```bash
 curl -i -X POST https://day12-v2-production.up.railway.app/ask \
   -H "Content-Type: application/json" \
-  -d '{"user_id":"doc-test","question":"Hello"}'
+  -d '{"user_id":"doc-final","question":"Hello"}'
 ```
 
 ### API Test (with API key)
@@ -38,7 +38,7 @@ curl -i -X POST https://day12-v2-production.up.railway.app/ask \
 curl -i -X POST https://day12-v2-production.up.railway.app/ask \
   -H "X-API-Key: YOUR_AGENT_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"user_id":"doc-test-ok","question":"Give one short travel tip for Da Lat."}'
+  -d '{"user_id":"doc-final-auth","question":"Give one short travel tip for Da Lat.","mode":"chatbot"}'
 ```
 
 ### Rate Limit Test (12 requests)
@@ -48,7 +48,7 @@ for i in {1..12}; do
     -X POST https://day12-v2-production.up.railway.app/ask \
     -H "X-API-Key: YOUR_AGENT_API_KEY" \
     -H "Content-Type: application/json" \
-    -d '{"user_id":"ratetest-doc-final","question":"Rate test"}'
+    -d '{"user_id":"ratetest-doc-final","question":"Ping","mode":"chatbot"}'
 done
 ```
 
@@ -57,7 +57,7 @@ done
 ### Health
 ```text
 Status=200
-Body={"status":"ok"}
+Body={"environment":"development","redis_connected":false,"shutting_down":false,"status":"ok"}
 ```
 
 ### Ready
@@ -75,22 +75,27 @@ Body=
 ### Ask (with API key)
 ```json
 {
-  "answer": "When visiting Da Lat, don't miss the chance to explore the vibrant local markets, like Da Lat Market, for fresh produce, unique souvenirs, and delicious street food. It's a great way to immerse yourself in the local culture.",
+  "answer": "When traveling to Da Lat, make sure to pack layered clothing. The weather can be quite variable, with cool mornings and evenings but warmer afternoons, so dressing in layers will keep you comfortable throughout the day.",
   "metrics": {
-    "completion_tokens": 63,
-    "latency_ms": 1244,
-    "prompt_tokens": 954,
-    "steps_count": 1,
-    "total_tokens": 1017
+    "completion_tokens": 41,
+    "latency_ms": 1145,
+    "prompt_tokens": 114,
+    "steps_count": 0,
+    "total_tokens": 155
   },
-  "mode": "agent_v2",
-  "user_id": "doc-test-ok"
+  "mode": "chatbot",
+  "usage": {
+    "monthly_budget_usd": 10.0,
+    "monthly_spend_usd": 0.000046,
+    "requests_remaining": 9
+  },
+  "user_id": "doc-final-auth"
 }
 ```
 
 ### Rate Limit (12 requests)
 ```text
-RateLimitUser=ratetest-doc-final-1885561842
+RateLimitUser=ratetest-doc-final-158376357
 Req1=200
 Req2=200
 Req3=200
