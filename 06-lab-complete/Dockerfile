@@ -17,8 +17,8 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 # Stage 2: Runtime
 FROM python:3.11-slim AS runtime
 
-# Non-root user
-RUN groupadd -r agent && useradd -r -g agent -d /app agent
+# Non-root user (home must match where user-site packages are copied)
+RUN groupadd -r agent && useradd -r -g agent -m -d /home/agent agent
 
 WORKDIR /app
 

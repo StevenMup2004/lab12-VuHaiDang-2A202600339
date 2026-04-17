@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌍 Travel Planning Agent — AI Trip Planner</title>
+    <meta name="description" content="AI-powered travel planning assistant using ReAct agent with real-time weather, hotel search, and activity recommendations.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <!-- Animated background -->
+    <div class="bg-animation">
+        <div class="bg-gradient"></div>
+        <div class="bg-orb bg-orb-1"></div>
+        <div class="bg-orb bg-orb-2"></div>
+        <div class="bg-orb bg-orb-3"></div>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🌍</span>
+                    <div class="logo-text">
+                        <h1>TravelAI</h1>
+                        <p>ReAct Agent Lab</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mode Selector -->
+            <div class="mode-section">
+                <h3 class="section-title">🧠 AI Mode</h3>
+                <div class="mode-cards">
+                    <label class="mode-card" data-mode="chatbot">
+                        <input type="radio" name="mode" value="chatbot">
+                        <div class="mode-card-inner">
+                            <div class="mode-icon">💬</div>
+                            <div class="mode-info">
+                                <span class="mode-name">Chatbot</span>
+                                <span class="mode-desc">No tools, baseline</span>
+                            </div>
+                            <div class="mode-badge badge-baseline">Baseline</div>
+                        </div>
+                    </label>
+                    <label class="mode-card" data-mode="agent_v1">
+                        <input type="radio" name="mode" value="agent_v1">
+                        <div class="mode-card-inner">
+                            <div class="mode-icon">🤖</div>
+                            <div class="mode-info">
+                                <span class="mode-name">Agent v1</span>
+                                <span class="mode-desc">Basic ReAct loop</span>
+                            </div>
+                            <div class="mode-badge badge-v1">v1</div>
+                        </div>
+                    </label>
+                    <label class="mode-card active" data-mode="agent_v2">
+                        <input type="radio" name="mode" value="agent_v2" checked>
+                        <div class="mode-card-inner">
+                            <div class="mode-icon">🚀</div>
+                            <div class="mode-info">
+                                <span class="mode-name">Agent v2</span>
+                                <span class="mode-desc">Improved + guardrails</span>
+                            </div>
+                            <div class="mode-badge badge-v2">v2</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Quick Test Cases -->
+            <div class="test-section">
+                <h3 class="section-title">⚡ Quick Tests</h3>
+                <div class="test-cases" id="testCases">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <!-- Tools Info -->
+            <div class="tools-section">
+                <h3 class="section-title">🛠️ Available Tools</h3>
+                <div class="tool-chips">
+                    <div class="tool-chip">
+                        <span class="tool-chip-icon">🌤️</span>
+                        <span>check_weather</span>
+                    </div>
+                    <div class="tool-chip">
+                        <span class="tool-chip-icon">🏨</span>
+                        <span>search_hotels</span>
+                    </div>
+                    <div class="tool-chip">
+                        <span class="tool-chip-icon">🎯</span>
+                        <span>search_activities</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <p>Lab 3 — Chatbot vs ReAct Agent</p>
+                <p class="footer-sub">Built with OpenAI gpt-4o</p>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area -->
+        <main class="main-chat">
+            <!-- Top Bar -->
+            <header class="chat-header">
+                <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="3" y1="6" x2="21" y2="6"></line>
+                        <line x1="3" y1="12" x2="21" y2="12"></line>
+                        <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                </button>
+                <div class="header-info">
+                    <h2 id="headerTitle">🌍 Travel Planning Assistant</h2>
+                    <div class="header-status">
+                        <span class="status-dot"></span>
+                        <span id="headerMode">Agent v2 — Ready</span>
+                    </div>
+                </div>
+                <button class="clear-btn" id="clearChat" title="Clear chat">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3,6 5,6 21,6"></polyline>
+                        <path d="M19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"></path>
+                    </svg>
+                </button>
+            </header>
+
+            <!-- Messages Container -->
+            <div class="messages-container" id="messagesContainer">
+                <div class="messages" id="messages">
+                    <!-- Welcome Message -->
+                    <div class="message bot-message welcome-message">
+                        <div class="message-avatar">🌍</div>
+                        <div class="message-content">
+                            <div class="message-bubble">
+                                <h3>Xin chào! 👋</h3>
+                                <p>Tôi là trợ lý lên lịch trình du lịch AI. Tôi có thể giúp bạn:</p>
+                                <ul>
+                                    <li>🌤️ <strong>Kiểm tra thời tiết</strong> tại điểm đến</li>
+                                    <li>🏨 <strong>Tìm khách sạn</strong> phù hợp ngân sách</li>
+                                    <li>🎯 <strong>Gợi ý hoạt động</strong> dựa trên thời tiết</li>
+                                </ul>
+                                <p class="hint">💡 Thử hỏi: <em>"Tôi định đi Đà Lạt cuối tuần này, thời tiết thế nào?"</em></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <textarea 
+                        id="messageInput" 
+                        placeholder="Nhập câu hỏi về du lịch... (Enter để gửi, Shift+Enter xuống dòng)"
+                        rows="1"
+                        autofocus
+                    ></textarea>
+                    <button class="send-btn" id="sendBtn" title="Send message">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22,2 15,22 11,13 2,9"></polygon>
+                        </svg>
+                    </button>
+                </div>
+                <div class="input-footer">
+                    <span id="inputModeIndicator" class="input-mode">🚀 Agent v2</span>
+                    <span class="input-hint">Enter ↵ to send</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Right Panel: Metrics/Steps -->
+        <aside class="right-panel" id="rightPanel">
+            <div class="panel-header">
+                <h3>📊 ReAct Trace</h3>
+                <button class="panel-close" id="closePanel">×</button>
+            </div>
+            <div class="panel-content" id="panelContent">
+                <div class="panel-empty">
+                    <div class="panel-empty-icon">🔍</div>
+                    <p>Send a message to see the agent's reasoning trace here</p>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
