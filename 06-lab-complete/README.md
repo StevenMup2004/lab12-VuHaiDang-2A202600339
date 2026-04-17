@@ -1,19 +1,15 @@
-# Lab 12 — Complete Production Agent
+# Lab 12 — Integrated Project Deployment
 
-Final production-ready agent for Day 12 checklist.
+This folder now deploys the integrated project runtime using Flask + Gunicorn.
 
 ## Project Structure
 
 ```text
 06-lab-complete/
-├── app/
-│   ├── main.py         # FastAPI entrypoint
-│   ├── config.py       # 12-factor configuration
-│   ├── auth.py         # API key authentication
-│   ├── rate_limiter.py # Redis-backed rate limiter
-│   └── cost_guard.py   # Redis-backed monthly budget guard
-├── utils/
-│   └── mock_llm.py
+├── app.py              # Flask entrypoint
+├── src/                # Agent, tools, providers
+├── templates/          # Web UI templates
+├── static/             # CSS and JS assets
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
@@ -21,18 +17,17 @@ Final production-ready agent for Day 12 checklist.
 ├── .dockerignore
 ├── railway.toml
 ├── render.yaml
-└── check_production_ready.py
+├── check_production_ready.py
+└── backup_pre_project_integration_*/
 ```
 
-## Requirement Mapping
+## Endpoints
 
-- API key auth: `X-API-Key`
-- Rate limit: `RATE_LIMIT_PER_MINUTE=10` (default)
-- Cost guard: `MONTHLY_BUDGET_USD=10.0` (default)
-- Health/readiness: `GET /health`, `GET /ready`
-- Graceful shutdown: SIGTERM + readiness off during shutdown
-- Stateless design: rate/budget state stored in Redis
-- No hardcoded secrets: all sensitive config from environment variables
+- `GET /` web interface
+- `GET /health` health check
+- `GET /ready` readiness check
+- `POST /api/chat` full chat API
+- `POST /ask` compatibility API for simple question payload
 
 ## Run Locally
 
@@ -48,10 +43,9 @@ Test:
 ```bash
 curl http://localhost:8000/health
 curl http://localhost:8000/ready
-curl -X POST http://localhost:8000/ask \
-  -H "X-API-Key: dev-key-change-me-in-production" \
+curl -X POST http://localhost:8000/api/chat \
   -H "Content-Type: application/json" \
-  -d '{"user_id":"test","question":"Hello"}'
+  -d '{"message":"Hello","mode":"agent_v2"}'
 ```
 
 ### Option 2: Python
@@ -59,26 +53,26 @@ curl -X POST http://localhost:8000/ask \
 ```bash
 cd 06-lab-complete
 python -m pip install -r requirements.txt
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+python app.py
 ```
 
 ## Deploy
 
 ### Railway
 
-`railway.toml` is ready. Set these variables in Railway:
+`railway.toml` is ready. Set these variables in Railway/Render:
 
 - `PORT`
-- `REDIS_URL`
-- `AGENT_API_KEY`
-- `OPENAI_API_KEY` (optional; app uses mock if empty)
-- `RATE_LIMIT_PER_MINUTE`
-- `MONTHLY_BUDGET_USD`
+- `AGENT_API_KEY` (optional, for `/ask`)
+- `OPENAI_API_KEY` (required if using OpenAI provider)
+- `GEMINI_API_KEY` (optional)
+- `DEFAULT_PROVIDER`
+- `DEFAULT_MODEL`
 - `LOG_LEVEL`
 
 ### Render
 
-`render.yaml` is ready with default values for budget and rate limit.
+`render.yaml` uses service name `day12-v2` to avoid overwriting existing service.
 
 ## Production Readiness Check
 

@@ -1,7 +1,0 @@
-.env
-.env.example
-logs/
-__pycache__/
-*.log
-.DS_Store
-models/

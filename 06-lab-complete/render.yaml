@@ -1,21 +1,21 @@
 services:
   - type: web
-    name: ai-agent-production
+    name: day12-v2
     runtime: docker
     region: singapore
     plan: starter
     healthCheckPath: /health
     autoDeploy: true
     envVars:
-      - key: ENVIRONMENT
-        value: production
-      - key: APP_VERSION
-        value: "1.0.0"
+      - key: DEFAULT_PROVIDER
+        value: openai
+      - key: DEFAULT_MODEL
+        value: gpt-4o
+      - key: LOG_LEVEL
+        value: INFO
       - key: OPENAI_API_KEY
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
       - key: AGENT_API_KEY
-        generateValue: true
-      - key: MONTHLY_BUDGET_USD
-        value: "10.0"
-      - key: RATE_LIMIT_PER_MINUTE
-        value: "10"
+        sync: false

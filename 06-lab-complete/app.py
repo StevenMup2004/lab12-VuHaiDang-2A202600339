@@ -33,19 +33,81 @@ agent_v1 = None
 agent_v2 = None
 
 
+def _simulated_answer(user_message: str) -> str:
+    """Return a deterministic fallback answer when external LLM is unavailable."""
+    return (
+        "[SIMULATED] Live deploy is healthy. OPENAI_API_KEY is missing or invalid, "
+        f"so this fallback response is used for question: {user_message[:160]}"
+    )
+
+
 def init_systems():
     """Lazy initialization of LLM systems."""
     global provider, tools, agent_v1, agent_v2
-    if provider is None:
-        provider = OpenAIProvider(model_name=os.getenv("DEFAULT_MODEL", "gpt-4o"))
+    if provider is None and agent_v1 is None and agent_v2 is None:
         tools = get_tools()
-        agent_v1 = ReActAgent(llm=provider, tools=tools, max_steps=10, version="v1")
-        agent_v2 = ReActAgent(llm=provider, tools=tools, max_steps=10, version="v2")
+        try:
+            provider = OpenAIProvider(model_name=os.getenv("DEFAULT_MODEL", "gpt-4o"))
+            agent_v1 = ReActAgent(llm=provider, tools=tools, max_steps=10, version="v1")
+            agent_v2 = ReActAgent(llm=provider, tools=tools, max_steps=10, version="v2")
+        except Exception as e:
+            # Keep service responsive even without OPENAI_API_KEY.
+            logger.error(f"LLM initialization failed, using simulated fallback: {str(e)}")
+            provider = None
+            agent_v1 = None
+            agent_v2 = None
 
 
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+@app.route('/health', methods=['GET'])
+def health():
+    return jsonify({"status": "ok"}), 200
+
+
+@app.route('/ready', methods=['GET'])
+def ready():
+    return jsonify({"status": "ready"}), 200
+
+
+@app.route('/ask', methods=['POST'])
+def ask():
+    required_key = os.getenv("AGENT_API_KEY", "").strip()
+    if required_key:
+        provided_key = request.headers.get("X-API-Key", "").strip()
+        if provided_key != required_key:
+            return jsonify({"detail": "Unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    question = str(data.get('question', '')).strip()
+    user_id = str(data.get('user_id', 'anonymous')).strip()
+    mode = str(data.get('mode', 'agent_v2')).strip()
+
+    if not question:
+        return jsonify({"error": "No question provided"}), 400
+
+    init_systems()
+
+    try:
+        if mode == 'chatbot':
+            result = handle_chatbot(question).get_json() or {}
+        elif mode == 'agent_v1':
+            result = handle_agent(question, agent_v1, "v1").get_json() or {}
+        else:
+            result = handle_agent(question, agent_v2, "v2").get_json() or {}
+    except Exception as e:
+        logger.error(f"Error in /ask: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+    return jsonify({
+        "user_id": user_id,
+        "mode": result.get("mode", mode),
+        "answer": result.get("answer", ""),
+        "metrics": result.get("metrics", {})
+    })
 
 
 @app.route('/api/chat', methods=['POST'])
@@ -75,6 +137,21 @@ def chat():
 def handle_chatbot(user_message: str):
     """Handle chatbot baseline request."""
     start_time = time.time()
+
+    if provider is None:
+        total_time = int((time.time() - start_time) * 1000)
+        return jsonify({
+            "mode": "chatbot",
+            "answer": _simulated_answer(user_message),
+            "steps": [],
+            "metrics": {
+                "latency_ms": total_time,
+                "total_tokens": 0,
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "steps_count": 0
+            }
+        })
     
     system_prompt = """You are a travel planning assistant (Trợ lý Du lịch).
 You help users plan trips including weather, hotels, and activities.
@@ -84,7 +161,24 @@ If asked about specific real-time information (current weather, hotel prices, av
 you must clearly state that you don't have access to real-time data.
 Answer in the same language as the user's query."""
     
-    result = provider.generate(prompt=user_message, system_prompt=system_prompt)
+    try:
+        result = provider.generate(prompt=user_message, system_prompt=system_prompt)
+    except Exception as e:
+        logger.error(f"Chatbot LLM call failed, using simulated fallback: {str(e)}")
+        total_time = int((time.time() - start_time) * 1000)
+        return jsonify({
+            "mode": "chatbot",
+            "answer": _simulated_answer(user_message),
+            "steps": [],
+            "metrics": {
+                "latency_ms": total_time,
+                "total_tokens": 0,
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "steps_count": 0
+            }
+        })
+
     total_time = int((time.time() - start_time) * 1000)
     
     return jsonify({
@@ -105,6 +199,27 @@ def handle_agent(user_message: str, agent: ReActAgent, version: str):
     """Handle agent request with step-by-step tracking."""
     start_time = time.time()
     steps_log = []
+
+    if agent is None:
+        total_time = int((time.time() - start_time) * 1000)
+        return jsonify({
+            "mode": f"agent_{version}",
+            "answer": _simulated_answer(user_message),
+            "steps": [
+                {
+                    "step": 1,
+                    "type": "error",
+                    "content": "LLM unavailable, simulated fallback used"
+                }
+            ],
+            "metrics": {
+                "latency_ms": total_time,
+                "total_tokens": 0,
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "steps_count": 1
+            }
+        })
     
     # We need to capture steps during the agent run
     # Override the agent's run to capture step details
@@ -278,9 +393,12 @@ def get_test_cases():
 
 
 if __name__ == '__main__':
+    port = int(os.getenv("PORT", "8000"))
+    debug = os.getenv("FLASK_DEBUG", "false").lower() in ("1", "true", "yes")
+
     print("\n" + "=" * 60)
     print("🌍 Travel Planning Agent — Web UI")
     print("=" * 60)
-    print("Open in browser: http://localhost:5000")
+    print(f"Open in browser: http://localhost:{port}")
     print("=" * 60 + "\n")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=debug, host='0.0.0.0', port=port)

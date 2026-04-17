@@ -117,7 +117,7 @@ Railway / Render / Cloud Run
 
 ### Health Check
 ```bash
-curl https://your-agent.railway.app/health
+curl https://day12-v1-production.up.railway.app/health
 # Expected: {"status": "ok"}
 ```
 

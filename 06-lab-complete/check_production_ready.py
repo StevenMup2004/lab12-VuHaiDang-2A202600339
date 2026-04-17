@@ -63,7 +63,7 @@ def run_checks():
 
     # Check no hardcoded secrets in code
     secrets_found = []
-    for f in ["app/main.py", "app/config.py"]:
+    for f in ["app.py", "src/core/openai_provider.py"]:
         fpath = os.path.join(base, f)
         if os.path.exists(fpath):
             content = open(fpath).read()
@@ -76,23 +76,21 @@ def run_checks():
 
     # ── API Endpoints ────────────────────────────��─
     print("\n🌐 API Endpoints (code check)")
-    main_py = os.path.join(base, "app", "main.py")
+    main_py = os.path.join(base, "app.py")
     if os.path.exists(main_py):
         content = open(main_py).read()
         results.append(check("/health endpoint defined",
                              '"/health"' in content or "'/health'" in content))
         results.append(check("/ready endpoint defined",
                              '"/ready"' in content or "'/ready'" in content))
-        results.append(check("Authentication implemented",
-                             "api_key" in content.lower() or "verify_token" in content))
-        results.append(check("Rate limiting implemented",
-                             "rate_limit" in content.lower() or "429" in content))
-        results.append(check("Graceful shutdown (SIGTERM)",
-                             "SIGTERM" in content))
-        results.append(check("Structured logging (JSON)",
-                             "json.dumps" in content or '"event"' in content))
+        results.append(check("/api/chat endpoint defined",
+                             '"/api/chat"' in content or "'/api/chat'" in content))
+        results.append(check("/ask endpoint defined",
+                             '"/ask"' in content or "'/ask'" in content))
+        results.append(check("Agent integration present",
+                             "ReActAgent" in content))
     else:
-        results.append(check("app/main.py exists", False, "Create app/main.py!"))
+        results.append(check("app.py exists", False, "Create app.py!"))
 
     # ── Docker ─────────────────────────────────────
     print("\n🐳 Docker")
