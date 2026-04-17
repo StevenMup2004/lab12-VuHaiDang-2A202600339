@@ -6,7 +6,15 @@ This folder now deploys the integrated project runtime using Flask + Gunicorn.
 
 ```text
 06-lab-complete/
-├── app.py              # Flask entrypoint
+├── app.py              # Active Flask entrypoint (current deploy command)
+├── app/                # Checklist-friendly source layout
+│   ├── main.py         # Compatibility entrypoint to load app.py
+│   ├── config.py
+│   ├── auth.py
+│   ├── rate_limiter.py
+│   └── cost_guard.py
+├── utils/
+│   └── mock_llm.py
 ├── src/                # Agent, tools, providers
 ├── templates/          # Web UI templates
 ├── static/             # CSS and JS assets

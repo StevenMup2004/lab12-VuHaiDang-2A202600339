@@ -18,6 +18,11 @@ def check(name: str, passed: bool, detail: str = "") -> dict:
     return {"name": name, "passed": passed}
 
 
+def read_text(path: str) -> str:
+    with open(path, "r", encoding="utf-8", errors="ignore") as handle:
+        return handle.read()
+
+
 def run_checks():
     results = []
     base = os.path.dirname(__file__)
@@ -42,6 +47,25 @@ def run_checks():
                          os.path.exists(os.path.join(base, "railway.toml")) or
                          os.path.exists(os.path.join(base, "render.yaml"))))
 
+    app_dir = os.path.join(base, "app")
+    results.append(check("app/ directory exists", os.path.isdir(app_dir)))
+    for required in [
+        "main.py",
+        "config.py",
+        "auth.py",
+        "rate_limiter.py",
+        "cost_guard.py",
+    ]:
+        results.append(check(
+            f"app/{required} exists",
+            os.path.exists(os.path.join(app_dir, required))
+        ))
+
+    results.append(check(
+        "utils/mock_llm.py exists",
+        os.path.exists(os.path.join(base, "utils", "mock_llm.py"))
+    ))
+
     # ── Security ──────────────────────────────────���
     print("\n🔒 Security")
 
@@ -53,7 +77,7 @@ def run_checks():
     env_ignored = False
     for gi in [gitignore, root_gitignore]:
         if os.path.exists(gi):
-            content = open(gi).read()
+            content = read_text(gi)
             if ".env" in content:
                 env_ignored = True
                 break
@@ -66,7 +90,7 @@ def run_checks():
     for f in ["app.py", "src/core/openai_provider.py"]:
         fpath = os.path.join(base, f)
         if os.path.exists(fpath):
-            content = open(fpath).read()
+            content = read_text(fpath)
             for bad in ["sk-", "password123", "hardcoded"]:
                 if bad in content:
                     secrets_found.append(f"{f}:{bad}")
@@ -78,7 +102,7 @@ def run_checks():
     print("\n🌐 API Endpoints (code check)")
     main_py = os.path.join(base, "app.py")
     if os.path.exists(main_py):
-        content = open(main_py).read()
+        content = read_text(main_py)
         results.append(check("/health endpoint defined",
                              '"/health"' in content or "'/health'" in content))
         results.append(check("/ready endpoint defined",
@@ -103,7 +127,7 @@ def run_checks():
     # Dependencies
     req_file = os.path.join(base, "requirements.txt")
     if os.path.exists(req_file):
-        req_content = open(req_file).read().lower()
+        req_content = read_text(req_file).lower()
         results.append(check("Redis dependency present",
                              "redis" in req_content))
 
@@ -111,7 +135,7 @@ def run_checks():
     print("\n🐳 Docker")
     dockerfile = os.path.join(base, "Dockerfile")
     if os.path.exists(dockerfile):
-        content = open(dockerfile).read()
+        content = read_text(dockerfile)
         results.append(check("Multi-stage build",
                              "AS builder" in content or "AS runtime" in content))
         results.append(check("Non-root user",
@@ -123,7 +147,7 @@ def run_checks():
 
     dockerignore = os.path.join(base, ".dockerignore")
     if os.path.exists(dockerignore):
-        content = open(dockerignore).read()
+        content = read_text(dockerignore)
         results.append(check(".dockerignore covers .env",
                              ".env" in content))
         results.append(check(".dockerignore covers __pycache__",

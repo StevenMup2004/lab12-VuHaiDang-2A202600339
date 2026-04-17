@@ -7,6 +7,7 @@ import os
 import sys
 import json
 import time
+import math
 import re
 import signal
 import hashlib
@@ -74,9 +75,15 @@ OUTPUT_COST_PER_1K = 0.00060
 
 
 class RateLimitExceeded(Exception):
-    def __init__(self, limit: int, window_seconds: int):
+    def __init__(
+        self,
+        limit: int,
+        window_seconds: int,
+        retry_after_seconds: int,
+    ):
         self.limit = limit
         self.window_seconds = window_seconds
+        self.retry_after_seconds = retry_after_seconds
         super().__init__("Rate limit exceeded")
 
 
@@ -103,6 +110,7 @@ class RateLimiter:
 
     def check(self, identity: str) -> dict:
         now = time.time()
+        retry_after_seconds = self.window_seconds
 
         if self._redis is not None:
             key = f"rl:{identity}"
@@ -114,6 +122,14 @@ class RateLimiter:
             pipe.zcard(key)
             pipe.expire(key, self.window_seconds + 5)
             _, _, request_count, _ = pipe.execute()
+
+            oldest = self._redis.zrange(key, 0, 0, withscores=True)
+            if oldest:
+                oldest_score = oldest[0][1]
+                retry_after_seconds = max(
+                    int(math.ceil(oldest_score + self.window_seconds - now)),
+                    1,
+                )
         else:
             with self._lock:
                 window = self._memory_windows[identity]
@@ -121,9 +137,18 @@ class RateLimiter:
                     window.popleft()
                 window.append(now)
                 request_count = len(window)
+                if window:
+                    retry_after_seconds = max(
+                        int(math.ceil(window[0] + self.window_seconds - now)),
+                        1,
+                    )
 
         if request_count > self.limit_per_minute:
-            raise RateLimitExceeded(self.limit_per_minute, self.window_seconds)
+            raise RateLimitExceeded(
+                self.limit_per_minute,
+                self.window_seconds,
+                retry_after_seconds,
+            )
 
         return {
             "limit": self.limit_per_minute,
@@ -355,16 +380,18 @@ def ask():
     try:
         rate_info = _rate_limiter.check(identity)
     except RateLimitExceeded as exc:
+        retry_after_seconds = max(exc.retry_after_seconds, 1)
         return (
             jsonify({
                 "detail": {
                     "error": "Rate limit exceeded",
                     "limit": exc.limit,
                     "window_seconds": exc.window_seconds,
+                    "retry_after_seconds": retry_after_seconds,
                 }
             }),
             429,
-            {"Retry-After": str(exc.window_seconds)},
+            {"Retry-After": str(retry_after_seconds)},
         )
 
     input_tokens = max(len(question.split()) * 2, 1)
